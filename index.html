@@ -4,9 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pose Sténopé</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
 /* Layout : réglages à gauche (sténopé, lumière, film), résultat + minuteur collant à droite ; une colonne sur téléphone. */
 :root {
@@ -606,10 +604,15 @@ code { font-family: var(--font-mono); font-size: 0.9em; }
     render();
   }
 
+  // Pont natif fourni par l'appli Android (WebView), absent dans un navigateur.
+  const native = window.PoseAndroid || null;
+
   async function requestWake() {
+    if (native) { native.keepScreenOn(true); return; }
     try { if ("wakeLock" in navigator) timer.wake = await navigator.wakeLock.request("screen"); } catch (e) { timer.wake = null; }
   }
   function releaseWake() {
+    if (native) { native.keepScreenOn(false); return; }
     try { if (timer.wake) timer.wake.release(); } catch (e) { /* ignoré */ }
     timer.wake = null;
   }
@@ -629,7 +632,10 @@ code { font-family: var(--font-mono); font-size: 0.9em; }
       $("timerHint").textContent = "Pose terminée : refermez l'obturateur.";
       beep(1320, 0.5);
       setTimeout(() => beep(1320, 0.5), 600);
-      try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) { /* ignoré */ }
+      try {
+        if (native) native.vibrate("300,150,300");
+        else if (navigator.vibrate) navigator.vibrate([300, 150, 300]);
+      } catch (e) { /* ignoré */ }
     }
   }
 

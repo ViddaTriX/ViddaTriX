@@ -1,0 +1,67 @@
+plugins {
+    id "com.android.application"
+}
+
+// La page web (index.html et polices) vit à la racine du dépôt ; elle est copiée dans les assets à chaque build.
+def webRoot = file("$rootDir/..")
+def webAssets = layout.buildDirectory.dir("generated/webAssets")
+
+def copyWebApp = tasks.register("copyWebApp", Copy) {
+    from(webRoot) {
+        include "index.html"
+        include "fonts/**"
+    }
+    into webAssets
+}
+
+// Signature : clé fournie par variables d'environnement si présente, sinon clé de debug.
+def keystorePath = System.getenv("POSE_KEYSTORE_FILE")
+
+android {
+    namespace "fr.viddatrix.posestenope"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "fr.viddatrix.posestenope"
+        minSdk 26
+        targetSdk 35
+        versionCode((project.findProperty("versionCode") ?: "1") as Integer)
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword System.getenv("POSE_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("POSE_KEY_ALIAS")
+                keyPassword System.getenv("POSE_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig keystorePath ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    sourceSets {
+        main {
+            assets.srcDir(webAssets)
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+tasks.named("preBuild") { dependsOn copyWebApp }
